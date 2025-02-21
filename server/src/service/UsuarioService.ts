@@ -5,6 +5,8 @@ export class UsuarioService {
 
     public static async createUser(user: Usuario){
         try{
+            const usuarios : Usuario [] = await UsuarioRepository.obtenerUsuarios();
+            const findUser : Usuario = usuarios.
             await UsuarioRepository.save(user);
         }catch(err){
             console.log(err);

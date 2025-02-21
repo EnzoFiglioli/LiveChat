@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { io } from "socket.io-client";
 import ChatContainer from "./components/Chatcontainer";
 import SalasContainer from "./components/SalasContainer";
@@ -8,23 +8,30 @@ import { Message } from "./models/Message";
 import { Usuario } from "./models/Usuario";
 import { ChatContext } from "./context/ChatContext";
 
-const socket = io("http://localhost:3000", { transports: ["websocket"] });
+const baseDir = "https://3000-idx-livechat-1740096392688.cluster-etsqrqvqyvd4erxx7qq32imrjk.cloudworkstations.dev";
+
+const socket = io("http://localhost:3000", {
+    transports: ["websocket"],
+    reconnectionAttempts: 5, // Intentos limitados
+    reconnectionDelay: 1000, // Retardo entre reconexiones
+});
+
 
 const App = () => {
     const useMensaje = useContext(ChatContext);
     const chats = useMensaje?.chats || [];
     const [message, setMessage] = useState("");
-    const [messages, setMessages] = useState<Message[]>(()=> chats || []);
+    const [messages, setMessages] = useState<Message[]>(() => chats || []);
     const [section, setSection] = useState("Chats");
     const [tempUsername, setTempUsername] = useState("");
     const [usuario, setUsuario] = useState<Usuario | null>(null);
+    const [errorUsuario, setErrorUsuario] = useState(""); // Estado para mostrar errores
 
     useEffect(() => {
         if (usuario) {
             sessionStorage.setItem("usuario", JSON.stringify(usuario));
         }
     }, [usuario]);
-    
 
     useEffect(() => {
         socket.on("connect_error", (err) => console.error("Error de conexión:", err.message));
@@ -45,7 +52,11 @@ const App = () => {
         if (usuario) {
             socket.emit("usuarios", usuario);
         }
-    }, [usuario]);
+        return () => {
+            socket.off("usuarios");
+        };
+    }, [usuario]);  // Asegúrate de que solo se emita cuando el usuario cambia
+    
 
     const randomColor = (): string => {
         const colors = ["text-red-500", "text-blue-500", "text-green-500", "text-yellow-600", "text-orange-500", "text-cyan-500"];
@@ -68,35 +79,51 @@ const App = () => {
             fecha: new Date().toISOString(),
         };
 
-        socket.emit("message", newMessage,()=>{
-            fetch("http://localhost:3000/mensajes",{
-                method:"POST",
-                headers:{
-                    "Content-Type":"application/json"
+        socket.emit("message", newMessage, () => {
+            fetch("http://localhost:3000/mensajes", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
                 },
-                body:JSON.stringify({
-                    newMessage
-                })
-            })
-            
+                body: JSON.stringify({ newMessage })
+            });
         });
         setMessage("");
     };
 
-    const handleSaveUser = () => {
-        if (tempUsername.trim()) {
-            const newUser = {
-                username: tempUsername.trim(),
-                mainColor: randomColor(),
-                sexo: "Indefinido",
-            };
-            setUsuario(newUser);
-            sessionStorage.setItem("usuario", JSON.stringify(newUser));
+    const handleSaveUser = async () => {
+        if (!tempUsername.trim()) return;
+        
+        const newUser = {
+            username: tempUsername.trim(),
+            mainColor: randomColor(),
+            sexo: "Indefinido",
+        };
+    
+        try {
+            console.log("Verificando usuario...");
+            const response = await fetch(`${baseDir}/usuarios/${newUser.username}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: newUser.username }),
+            });
+    
+            console.log(response);  // Verifica la respuesta
+            const result = await response.json();
+    
+            if (result.exists) {
+                setErrorUsuario("Ese usuario ya existe. Intenta con otro nombre.");
+            } else {
+                setUsuario(newUser);
+                sessionStorage.setItem("usuario", JSON.stringify(newUser));
+                setErrorUsuario(""); 
+            }
+        } catch (error) {
+            console.error("Error al verificar usuario:", error);
+            setErrorUsuario("Ya existe un usuario con ese nombre.");
         }
     };
-    useEffect(()=>{
-        console.log(chats);
-    },[])
+    
 
     return (
         <div className="flex h-screen relative">
@@ -107,18 +134,19 @@ const App = () => {
                         <input
                             type="text"
                             placeholder="Tu nombre"
-                            className="w-full p-2 border rounded-md mb-4"
+                            className="w-full p-2 border rounded-md mb-2"
                             value={tempUsername}
                             onChange={(e) => setTempUsername(e.target.value)}
                         />
                         <select
                             onChange={(e) => setUsuario((prev) => prev ? { ...prev, sexo: e.target.value } : null)}
-                            className="w-full p-2 border rounded-md mb-4"
+                            className="w-full p-2 border rounded-md mb-2"
                         >
                             <option value="Indefinido">Prefiero no decirlo</option>
                             <option value="Mujer">Mujer</option>
                             <option value="Hombre">Hombre</option>
                         </select>
+                        {errorUsuario && <p className="text-red-500 text-sm mb-2">{errorUsuario}</p>}
                         <button
                             className="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
                             onClick={handleSaveUser}
@@ -137,7 +165,7 @@ const App = () => {
                 </span>
                 {section === "Chats" && <ChatContainer />}
                 {section === "Salas" && <SalasContainer />}
-                {section === "Usuarios" && <UsuariosContainer  userSession={usuario?.username} />}
+                {section === "Usuarios" && <UsuariosContainer userSession={usuario?.username} />}
             </aside>
 
             <section className="flex-1 flex flex-col bg-gray-100">
@@ -147,9 +175,7 @@ const App = () => {
                 </header>
                 <main className="flex-1 p-4 overflow-y-auto flex flex-col-reverse bg-gradient-to-t from-sky-500 to-indigo-500">
                     {messages.length > 0 ? messages.map((msg, ix) => (
-                        <div key={ix}>
-                            <Mensaje message={msg.message} username={msg.from} colorChat="text-blue-400" fecha={msg.fecha} avatarUrl={""}/>
-                        </div>
+                        <Mensaje key={ix} message={msg.message} username={msg.from} colorChat="text-blue-400" fecha={msg.fecha} avatarUrl={""}/>
                     )) : <h1 className="text-center text-gray-500">No hay mensajes</h1>}
                 </main>
                 <footer className="p-4 bg-white border-t flex items-center gap-2">

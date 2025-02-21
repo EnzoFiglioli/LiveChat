@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import {SocketConfig} from "./configurations/Socket.js";
 import usuarioRoutes from "./routes/usuariosRoutes.js";
 import { register } from 'ts-node';
+import cors from "cors";
 register();
 
 
@@ -12,6 +13,7 @@ const port: number = 3000;
 
 // Middlewares
 app.use(express.json());
+app.use(cors({origin:"*"}));
 
 // Routes
 app.use("/usuarios", usuarioRoutes);

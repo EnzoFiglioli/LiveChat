@@ -29,4 +29,10 @@ export class UsuarioRepository{
             console.log(err);
         }
     }
+
+    public static obtenerUsuarios = () =>  {
+        const data = readFileSync(pathDir, "utf8");
+        const usuarios = JSON.parse(data);
+        return usuarios;
+    }
 }
