@@ -1,4 +1,4 @@
-import {UsuarioRepository} from "../repository/UsuarioRespository";
+import {UsuarioRepository} from "../repository/UsuarioRespository.js";
 import { Usuario } from "../models/Usuario.js";
 
 export class UsuarioService {
@@ -6,9 +6,9 @@ export class UsuarioService {
     public static async createUser(user: Usuario){
         try{
             await UsuarioRepository.save(user);
-            return "Usuario creado exitosamente!"
         }catch(err){
             console.log(err);
+            return "El usuario ya existe.";
         }
     }
 }

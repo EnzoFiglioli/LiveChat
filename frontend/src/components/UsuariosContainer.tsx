@@ -7,7 +7,7 @@ const UsuariosContainer = ({userSession} : {userSession:string}) => {
   const {setChats} = useChat();
 
   useEffect(()=>{
-    fetch(`http://localhost:3000/usuarios`)
+    fetch(`https://3000-idx-livechat-1740096392688.cluster-etsqrqvqyvd4erxx7qq32imrjk.cloudworkstations.dev/usuarios`)
       .then(res => res.json())
       .then(response => setUsuarios(response))
       .catch(err=> console.error(err));

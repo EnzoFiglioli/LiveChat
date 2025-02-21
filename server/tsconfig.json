@@ -1,17 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "target": "es2016",
+    "module": "NodeNext",
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "baseUrl": "./src",
-    "paths": {
-      "*": ["node_modules/*"]
-    }
-  },
-  "include": [
-    "src/**/*.ts"
-  ]
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "resolveJsonModule": true
+  }
 }

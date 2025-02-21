@@ -3,6 +3,9 @@ import { Application } from 'express';
 import { Server } from 'socket.io';
 import {SocketConfig} from "./configurations/Socket.js";
 import usuarioRoutes from "./routes/usuariosRoutes.js";
+import { register } from 'ts-node';
+register();
+
 
 const app: Application = express();
 const port: number = 3000;
